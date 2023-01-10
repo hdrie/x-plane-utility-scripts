@@ -2,14 +2,14 @@
 
 Either of these scripts will automate X-Plane benchmark runs on Linux. It will run a standard X-Plane scenario (SMO file) with a certain rendering configuration (numerical code; see below) in either OpenGL or Vulkan mode (XP11 only; XP12 is exclusively using Vulkan) with either LLVM or ACO as a shader compiler (ACO is only available on Mesa drivers). Multiple, sequential benchmark runs can be specified.
 
-Test results are logged in an output file, which is appended and therefor has to be manually maintained. New sessions are timestamped.
+Test results are logged in an output file, which is appended and therefore has to be manually maintained. New sessions are timestamped.
 
 &nbsp;
 
 ## Requirements
 
 - X-Plane 11.50+/12 (preferably vanilla without any plugins)
-- Bash, grep, sed, uname (should be default in any distro)
+- Bash, awk, grep, sed, uname (should be available in any distro)
 - Xrandr (for reporting display resolutions)
 - Loginctl (determining window manager)
 
@@ -19,7 +19,9 @@ Test results are logged in an output file, which is appended and therefor has to
 
 Either script uses relative paths, so it must be located in X-Plane's root folder.
 
-Adjusting the amount of benchmarking function calls with their appropriate parameters isd the only configuration that is necessary. These calls are located at the end of the script between the *addheader* and *extracthw* calls and determine the amount of tests that are to be run per session.
+The sripts differ in functionality. The X-Plane 11 script is configured by inserting benchmarking function calls with their appropriate parameters. 
+These calls are located at the end of the script between the *addheader* and *extracthw* calls and determine the amount of tests that are to be run per session.
+The X-Plane 12 script is configured by changing variables in the configuration section of the script.
 
 &nbsp;
 
@@ -43,19 +45,19 @@ Sequential benchmark runs can be set up by simply calling the function multiple 
 
 &nbsp;
 
-### X-Plane12_Bench.sh script function call
+### X-Plane12_Bench.sh configuration
 
-*runbench [test] [Mode]*
+#### Required settings
 
-- *runbench*: Calls the function.
-- *test*: Define the test codes that the script should perform.   
-- *Mode*: Switch between drivers and shader compilers.   
-"llvm" forces usage of the LLVM compiler (otherwise uses the default aco compiler). **Vulkan mode and Mesa drivers only**   
-"amdvlk" forces usage of the AMDVLK Vulkan driver. **Vulkan mode only**
+- *FullscreenRes*: Sets the screen resolution to run the benchmark with.
+- *benchmarks*: Define the test codes that the script should perform. Set to a string or string array (separate with whitespace).
 
-&nbsp;
-
-Sequential benchmark runs can be set up by simply calling the function multiple times with the appropiate parameters (such as in the example configuration).
+#### Optional settings
+- *rendererOption* Switch between drivers and shader compilers. X-Plane 12 forces the vulkan API.
+"llvm" forces usage of the LLVM compiler (otherwise uses the default aco compiler). **Mesa drivers only**   
+"amdvlk" forces usage of the AMDVLK Vulkan driver. **This driver is not officially supported by X-Plane 12**
+- *repeatBench* and *repeatCount* specify, if and how often you want to repeat each benchmark run in *benchmarks*
+- *write_csv* set to true, if you also want to output the most relevant data to a .csv file, allowing more comfortable evalutation with tools like Python or LibreOffice.
 
 &nbsp;
 
@@ -75,13 +77,15 @@ This file contains the following information:
 
 - At the start of the session:
 	- A session header, including a timestamp (useful for adding a short note about your system configuration later on)
+	- Driver mode used in that session (X-Plane 12) This assumes that you would only change your driver config in between sessions.
 - For each benchmark run:
 	- The command line options passed to the X-Plane binary
-	- Information about the device and driver versions used, extracted from X-Plane's log file
+	- Information about the device and driver versions used, extracted from X-Plane's log file (X-Plane 11)
 	- FPS test results, as extracted from X-Plane's log file
 * At the end of the session:
 	- X-Plane version and build number (from Log.txt)
 	- CPU model and reported frequency (from Log.txt)
+	- Information about the device and driver versions used, extracted from X-Plane's log file (X-Plane 12)
 	- System / Video RAM (from Log.txt)
 	- Screen resolution (from XRandr)
 	- Kernel name (from uname) / Displaymanager (from loginctl)
