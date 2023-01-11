@@ -20,6 +20,7 @@ Replayfile=Output/replays/test_flight_737.fps
 FullscreenRes=1920x1080
 # One or more (separate with whitespace) benchmark code(s) to run (MANDATORY), refer to https://www.x-plane.com/kb/frame-rate-test/ for supported values
 benchmarks="1 3 5 41 43 45"
+usr_comment="" # your personal note to be printed with the benchmark results (for example a overclocking setting)
 
 # Optional, AMD ONLY: change vulkan driver
 # "llvm" uses the LLVM compiler instead of ACO
@@ -59,6 +60,7 @@ function runbench {
 function addheader {
     echo ----------------------------------------------------------------------------- >> "$Outputfile"
     echo SESSION START: "$(date "+%d/%m/%Y, %H:%M:%S h")" >> "$Outputfile"
+    echo User comment: "$usr_comment" >> "$Outputfile"
     if [ "$rendererOption" = "llvm" ]; then
         echo "Vulkan Driver: AMD Mesa (LLVM compiler)" >> "$Outputfile"
     elif [ "$rendererOption" = "amdvlk" ]; then
@@ -103,7 +105,7 @@ function writecsv {
     vulkan_version="$(grep 'Vulkan Version' "$Logfile" | awk '{print $4}')"
     vulkan_driver="$(grep 'Vulkan Driver' "$Logfile" | awk '{print $4}')"
     bench_preset="$1"
-    csv_header="bench_date;xp_version;kernel_version;vulkan_version;vulkan_driver;renderer_option;bench_preset;resolution;time;frames;fps;wait;load"
+    csv_header="bench_date;xp_version;kernel_version;vulkan_version;vulkan_driver;renderer_option;bench_preset;resolution;time;frames;fps;wait;load;usr_comment"
     csv_attributes="$bench_date;$xp_version;$kernel_version;$vulkan_version;$vulkan_driver;$rendererOption;$bench_preset;$FullscreenRes"
     raw_results="$(grep 'FRAMERATE TEST:\|GPU LOAD:' "$Logfile" | grep -E -o '[a-zA-Z]+=[0-9]*(\.[0-9]+)?%?')"
     csv_results=("$(echo "$raw_results" | sed -n '0,/time/s/^time=//p');" # string array to allow legible formatting while minimizing whitespace
@@ -118,7 +120,7 @@ function writecsv {
     fi
 
     # write values to csv: concatenate attributes string and results string array
-    echo "$csv_attributes;${csv_results[@]}" >> "$CSVoutputfile"
+    echo "$csv_attributes;${csv_results[@]};$usr_comment" >> "$CSVoutputfile"
 }
 
 #--------------------------------------------------------------
