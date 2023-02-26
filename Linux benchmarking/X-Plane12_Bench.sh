@@ -20,20 +20,21 @@ Replayfile=Output/replays/test_flight_737.fps
 FullscreenRes=1920x1080
 # One or more (separate with whitespace) benchmark code(s) to run (MANDATORY), refer to https://www.x-plane.com/kb/frame-rate-test/ for supported values
 benchmarks="1 3 5 41 43 45"
-usr_comment="" # your personal note to be printed with the benchmark results (for example a overclocking setting)
+usr_comment="" # your personal note to be printed with the benchmark results (for example an overclocking setting)
 
 # Optional, AMD ONLY: change vulkan driver
 # "llvm" uses the LLVM compiler instead of ACO
 # "amdvlk" uses AMD's open source Vulkan driver instead of Mesa's RADV
-# PICK ONE (default/fallback: "" = RADV + ACO)
-rendererOption="" 
+# "zink" enables the zink plugin bridge introduced in 12.04b3
+# PICK ONE (default/fallback: "" = RADV + ACO, zink off)
+rendererOption="zink" 
 
 # Optional: Repeat runs for statistical integrity:
 repeatBench=false # toggle [true|false]
 repeatCount=3 # run each benchmark x times
 
 # Optional: Write to .csv
-write_csv=false # toggle [true|false]
+write_csv=true # toggle [true|false]
 CSVoutputfile="$PWD/ZZ_Bench_Result_DB".csv
 
 
@@ -50,9 +51,13 @@ function runbench {
     elif [ "$rendererOption" = "amdvlk" ]; then
         # not officially supported by LR; forcing execution
         VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/amd_icd64.json "$PWD/X-Plane-x86_64" --force_run --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
+    elif [ "$rendererOption" = "zink" ]; then
+        # launch with zink plugin bridge enabled
+        "$PWD/X-Plane-x86_64" --zink --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
     else
         # export RADV_PERFTEST=aco #Not needed since Mesa 20.2
-        "$PWD/X-Plane-x86_64" --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
+        # launch with zink plugin bridge disabled
+        "$PWD/X-Plane-x86_64" --no_zink --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
     fi
 
 }
@@ -65,8 +70,10 @@ function addheader {
         echo "Vulkan Driver: AMD Mesa (LLVM compiler)" >> "$Outputfile"
     elif [ "$rendererOption" = "amdvlk" ]; then
         echo "Vulkan Driver: AMDVLK" >> "$Outputfile"
+    elif [ "$rendererOption" = "zink" ]; then
+        echo "Vulkan Driver: NVidia or AMD Mesa (ACO compiler), zink plugin bridge enabled" >> "$Outputfile"
     else
-        echo "Vulkan Driver: NVidia or AMD Mesa (ACO compiler)" >> "$Outputfile"
+        echo "Vulkan Driver: NVidia or AMD Mesa (ACO compiler), zink plugin bridge disabled" >> "$Outputfile"
     fi
 }
 
