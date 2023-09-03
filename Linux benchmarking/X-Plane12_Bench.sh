@@ -90,7 +90,7 @@ function writelog {
 
 function extracthw {
     echo ----------------------------------------------------------------------------- >> "$Outputfile"
-    echo X-Plane version : "$(grep "log.txt for" "$Logfile" | awk '{print $4,$5,$6,$7}')" >> "$Outputfile"
+    echo X-Plane version : "$(grep "Log.txt for" "$Logfile" | awk '{print $4,$5,$6,$7}')" >> "$Outputfile"
     echo CPU : "$(grep -m 1 -o 'model name.*' "$Logfile" | sed 's/model name\s: //g')" \("$(grep -m 1 -o 'cpu MHz.*' "$Logfile" | sed 's/cpu MHz\s\t: //g')" MHz\) >> "$Outputfile"
     grep "Vulkan Device" "$Logfile" >> "$Outputfile"
     grep "OpenGL Render" "$Logfile" >> "$Outputfile"
@@ -107,7 +107,7 @@ function extracthw {
 function writecsv {
     # initialize csv values
     bench_date="$(date "+%d/%m/%Y %H:%M:%S")"
-    xp_version="$(grep 'log.txt for' "$Logfile" | awk '{print $4}')"
+    xp_version="$(grep 'Log.txt for' "$Logfile" | awk '{print $4}')"
     kernel_version="$(uname -r)"
     vulkan_version="$(grep 'Vulkan Version' "$Logfile" | awk '{print $4}')"
     vulkan_driver="$(grep 'Vulkan Driver' "$Logfile" | awk '{print $4}')"
