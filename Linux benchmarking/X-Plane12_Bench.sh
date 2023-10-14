@@ -20,19 +20,21 @@ Replayfile=Output/replays/test_flight_737.fps
 FullscreenRes=1920x1080
 # One or more (separate with whitespace) benchmark code(s) to run (MANDATORY), refer to https://www.x-plane.com/kb/frame-rate-test/ for supported values
 benchmarks="1 3 5 41 43 45"
+usr_comment="" # your personal note to be printed with the benchmark results (for example an overclocking setting)
 
 # Optional, AMD ONLY: change vulkan driver
 # "llvm" uses the LLVM compiler instead of ACO
 # "amdvlk" uses AMD's open source Vulkan driver instead of Mesa's RADV
-# PICK ONE (default/fallback: "" = RADV + ACO)
-rendererOption="" 
+# "zink" enables the zink plugin bridge introduced in 12.04b3
+# PICK ONE (default/fallback: "" = RADV + ACO, zink off)
+rendererOption="zink" 
 
 # Optional: Repeat runs for statistical integrity:
 repeatBench=false # toggle [true|false]
 repeatCount=3 # run each benchmark x times
 
 # Optional: Write to .csv
-write_csv=false # toggle [true|false]
+write_csv=true # toggle [true|false]
 CSVoutputfile="$PWD/ZZ_Bench_Result_DB".csv
 
 
@@ -49,9 +51,13 @@ function runbench {
     elif [ "$rendererOption" = "amdvlk" ]; then
         # not officially supported by LR; forcing execution
         VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/amd_icd64.json "$PWD/X-Plane-x86_64" --force_run --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
+    elif [ "$rendererOption" = "zink" ]; then
+        # launch with zink plugin bridge enabled
+        "$PWD/X-Plane-x86_64" --zink --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
     else
         # export RADV_PERFTEST=aco #Not needed since Mesa 20.2
-        "$PWD/X-Plane-x86_64" --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
+        # launch with zink plugin bridge disabled
+        "$PWD/X-Plane-x86_64" --no_zink --fps_test="$1" --full=$FullscreenRes --load_smo=$Replayfile --weather_seed=1 --time_seed=1
     fi
 
 }
@@ -59,12 +65,15 @@ function runbench {
 function addheader {
     echo ----------------------------------------------------------------------------- >> "$Outputfile"
     echo SESSION START: "$(date "+%d/%m/%Y, %H:%M:%S h")" >> "$Outputfile"
+    echo User comment: "$usr_comment" >> "$Outputfile"
     if [ "$rendererOption" = "llvm" ]; then
         echo "Vulkan Driver: AMD Mesa (LLVM compiler)" >> "$Outputfile"
     elif [ "$rendererOption" = "amdvlk" ]; then
         echo "Vulkan Driver: AMDVLK" >> "$Outputfile"
+    elif [ "$rendererOption" = "zink" ]; then
+        echo "Vulkan Driver: NVidia or AMD Mesa (ACO compiler), zink plugin bridge enabled" >> "$Outputfile"
     else
-        echo "Vulkan Driver: NVidia or AMD Mesa (ACO compiler)" >> "$Outputfile"
+        echo "Vulkan Driver: NVidia or AMD Mesa (ACO compiler), zink plugin bridge disabled" >> "$Outputfile"
     fi
 }
 
@@ -81,7 +90,7 @@ function writelog {
 
 function extracthw {
     echo ----------------------------------------------------------------------------- >> "$Outputfile"
-    echo X-Plane version : "$(grep "log.txt for" "$Logfile" | awk '{print $4,$5,$6,$7}')" >> "$Outputfile"
+    echo X-Plane version : "$(grep "Log.txt for" "$Logfile" | awk '{print $4,$5,$6,$7}')" >> "$Outputfile"
     echo CPU : "$(grep -m 1 -o 'model name.*' "$Logfile" | sed 's/model name\s: //g')" \("$(grep -m 1 -o 'cpu MHz.*' "$Logfile" | sed 's/cpu MHz\s\t: //g')" MHz\) >> "$Outputfile"
     grep "Vulkan Device" "$Logfile" >> "$Outputfile"
     grep "OpenGL Render" "$Logfile" >> "$Outputfile"
@@ -98,12 +107,12 @@ function extracthw {
 function writecsv {
     # initialize csv values
     bench_date="$(date "+%d/%m/%Y %H:%M:%S")"
-    xp_version="$(grep 'log.txt for' "$Logfile" | awk '{print $4}')"
+    xp_version="$(grep 'Log.txt for' "$Logfile" | awk '{print $4}')"
     kernel_version="$(uname -r)"
     vulkan_version="$(grep 'Vulkan Version' "$Logfile" | awk '{print $4}')"
     vulkan_driver="$(grep 'Vulkan Driver' "$Logfile" | awk '{print $4}')"
     bench_preset="$1"
-    csv_header="bench_date;xp_version;kernel_version;vulkan_version;vulkan_driver;renderer_option;bench_preset;resolution;time;frames;fps;wait;load"
+    csv_header="bench_date;xp_version;kernel_version;vulkan_version;vulkan_driver;renderer_option;bench_preset;resolution;time;frames;fps;wait;load;usr_comment"
     csv_attributes="$bench_date;$xp_version;$kernel_version;$vulkan_version;$vulkan_driver;$rendererOption;$bench_preset;$FullscreenRes"
     raw_results="$(grep 'FRAMERATE TEST:\|GPU LOAD:' "$Logfile" | grep -E -o '[a-zA-Z]+=[0-9]*(\.[0-9]+)?%?')"
     csv_results=("$(echo "$raw_results" | sed -n '0,/time/s/^time=//p');" # string array to allow legible formatting while minimizing whitespace
@@ -118,7 +127,7 @@ function writecsv {
     fi
 
     # write values to csv: concatenate attributes string and results string array
-    echo "$csv_attributes;${csv_results[@]}" >> "$CSVoutputfile"
+    echo "$csv_attributes;${csv_results[@]};$usr_comment" >> "$CSVoutputfile"
 }
 
 #--------------------------------------------------------------
